@@ -1,0 +1,16 @@
+using sysbus
+
+mach create "smart-controller"
+machine LoadPlatformDescription @platforms/cpus/stm32f103.repl
+
+# Path to your compiled firmware - update this to match your actual project location
+$bin = @C:/Users/prame/OneDrive/Documents/Embedded_Engineer/STM32_Smart_Device_Controller_C/Debug/STM32_Smart_Device_Controller_C.elf
+
+sysbus LoadELF $bin
+
+emulation CreateServerSocketTerminal 3456 "term"
+connector Connect sysbus.usart1 term
+
+showAnalyzer sysbus.usart1
+
+start

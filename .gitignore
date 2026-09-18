@@ -1,0 +1,17 @@
+# STM32CubeIDE build output
+firmware/Debug/
+firmware/Release/
+
+# CubeIDE workspace/project metadata (machine-specific, not needed for others to build)
+firmware/.metadata/
+firmware/.settings/
+*.launch
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor junk
+*.swp
+*~
