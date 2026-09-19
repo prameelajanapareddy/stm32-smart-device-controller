@@ -48,7 +48,7 @@
 /* USER CODE BEGIN PV */
 extern osThreadId_t SensorTaskHandle;
 extern osThreadId_t UartTaskHandle;
-
+extern osMessageQueueId_t uartLineQueueHandle;
 #define RX_BUF_SIZE 64
 uint8_t rxByte;                       /* single byte the HAL ISR fills */
 char rxLine[RX_BUF_SIZE];             /* accumulated line */
@@ -176,20 +176,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if (rxByte == '\r')
     {
       rxLine[rxLineIndex] = '\0';
-      rxLineReady = 1;
-      osThreadFlagsSet(UartTaskHandle, 0x0002);
+      osMessageQueuePut(uartLineQueueHandle, rxLine, 0, 0);
       rxLineIndex = 0;
     }
     else if (rxByte == '\n')
     {
-      /* ignore - CRLF pairs would otherwise trigger a second,
-         empty "line ready" event right after the real one */
+      /* ignore - part of a CRLF pair */
     }
     else if (rxLineIndex < (RX_BUF_SIZE - 1))
     {
       rxLine[rxLineIndex++] = rxByte;
     }
-    /* re-arm for the next byte */
     HAL_UART_Receive_IT(&huart1, &rxByte, 1);
   }
 }

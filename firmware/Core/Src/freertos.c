@@ -37,7 +37,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define RX_BUF_SIZE 64
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,8 +59,6 @@ volatile uint8_t heaterState = 0;
 volatile uint8_t alarmAuxState = 0;
 
 extern UART_HandleTypeDef huart1;
-extern char rxLine[];
-extern volatile uint8_t rxLineReady;
 
 static void UartTask_SendString(const char *s)
 {
@@ -85,6 +83,11 @@ const osThreadAttr_t UartTask_attributes = {
 osMessageQueueId_t sensorQueueHandle;
 const osMessageQueueAttr_t sensorQueue_attributes = {
   .name = "sensorQueue"
+};
+/* Definitions for uartLineQueue */
+osMessageQueueId_t uartLineQueueHandle;
+const osMessageQueueAttr_t uartLineQueue_attributes = {
+  .name = "uartLineQueue"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -122,6 +125,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the queue(s) */
   /* creation of sensorQueue */
   sensorQueueHandle = osMessageQueueNew (4, 4, &sensorQueue_attributes);
+
+  /* creation of uartLineQueue */
+  uartLineQueueHandle = osMessageQueueNew (4, 64, &uartLineQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -211,20 +217,19 @@ void StartSensorTask(void *argument)
 void StartUartTask(void *argument)
 {
   /* USER CODE BEGIN StartUartTask */
+  char line[RX_BUF_SIZE];
   char txBuf[80];
-  uint32_t flags;
 
   UartTask_SendString("\r\n=== Smart Device Controller Ready ===\r\n");
 
   for(;;)
   {
-    flags = osThreadFlagsWait(0x0002, osFlagsWaitAny, osWaitForever);
-
-    if ((flags & 0x0002) && rxLineReady)
+    /* Blocks here until a complete line is pushed by the RX ISR.
+       Each line arrives as its own queue item now, so rapid back-to-back
+       commands queue up cleanly instead of overwriting a shared buffer. */
+    if (osMessageQueueGet(uartLineQueueHandle, line, NULL, osWaitForever) == osOK)
     {
-      rxLineReady = 0;
-
-      if (strncmp(rxLine, "STATUS", 6) == 0)
+      if (strncmp(line, "STATUS", 6) == 0)
       {
         uint32_t status;
         if (osMessageQueueGet(sensorQueueHandle, &status, NULL, 0) == osOK)
@@ -247,24 +252,24 @@ void StartUartTask(void *argument)
         }
         UartTask_SendString(txBuf);
       }
-      else if (strncmp(rxLine, "MODE AUTO", 9) == 0)
+      else if (strncmp(line, "MODE AUTO", 9) == 0)
       {
         systemMode = MODE_AUTO;
         UartTask_SendString("OK: mode=AUTO\r\n");
       }
-      else if (strncmp(rxLine, "MODE MANUAL", 11) == 0)
+      else if (strncmp(line, "MODE MANUAL", 11) == 0)
       {
         systemMode = MODE_MANUAL;
         UartTask_SendString("OK: mode=MANUAL\r\n");
       }
-      else if (strncmp(rxLine, "SET THRESHOLD", 13) == 0)
+      else if (strncmp(line, "SET THRESHOLD", 13) == 0)
       {
-        int val = atoi(rxLine + 14);
+        int val = atoi(line + 14);
         tempThreshold = (uint8_t)val;
         snprintf(txBuf, sizeof(txBuf), "OK: threshold=%d\r\n", tempThreshold);
         UartTask_SendString(txBuf);
       }
-      else if (strncmp(rxLine, "SET PA0 ", 8) == 0)
+      else if (strncmp(line, "SET PA0 ", 8) == 0)
       {
         if (systemMode != MODE_MANUAL)
         {
@@ -272,13 +277,13 @@ void StartUartTask(void *argument)
         }
         else
         {
-          fanState = (strstr(rxLine, "ON") != NULL) ? 1 : 0;
+          fanState = (strstr(line, "ON") != NULL) ? 1 : 0;
           HAL_GPIO_WritePin(ACT_FAN_GPIO_Port, ACT_FAN_Pin,
                              fanState ? GPIO_PIN_SET : GPIO_PIN_RESET);
           UartTask_SendString(fanState ? "OK: PA0=ON\r\n" : "OK: PA0=OFF\r\n");
         }
       }
-      else if (strncmp(rxLine, "SET PA1 ", 8) == 0)
+      else if (strncmp(line, "SET PA1 ", 8) == 0)
       {
         if (systemMode != MODE_MANUAL)
         {
@@ -286,13 +291,13 @@ void StartUartTask(void *argument)
         }
         else
         {
-          heaterState = (strstr(rxLine, "ON") != NULL) ? 1 : 0;
+          heaterState = (strstr(line, "ON") != NULL) ? 1 : 0;
           HAL_GPIO_WritePin(ACT_HEATER_GPIO_Port, ACT_HEATER_Pin,
                              heaterState ? GPIO_PIN_SET : GPIO_PIN_RESET);
           UartTask_SendString(heaterState ? "OK: PA1=ON\r\n" : "OK: PA1=OFF\r\n");
         }
       }
-      else if (strncmp(rxLine, "SET PA2 ", 8) == 0)
+      else if (strncmp(line, "SET PA2 ", 8) == 0)
       {
         if (systemMode != MODE_MANUAL)
         {
@@ -300,7 +305,7 @@ void StartUartTask(void *argument)
         }
         else
         {
-          alarmAuxState = (strstr(rxLine, "ON") != NULL) ? 1 : 0;
+          alarmAuxState = (strstr(line, "ON") != NULL) ? 1 : 0;
           HAL_GPIO_WritePin(ACT_ALARM_AUX_GPIO_Port, ACT_ALARM_AUX_Pin,
                              alarmAuxState ? GPIO_PIN_SET : GPIO_PIN_RESET);
           UartTask_SendString(alarmAuxState ? "OK: PA2=ON\r\n" : "OK: PA2=OFF\r\n");
@@ -319,4 +324,3 @@ void StartUartTask(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
-
