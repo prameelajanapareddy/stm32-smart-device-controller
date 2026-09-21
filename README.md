@@ -1,6 +1,6 @@
 # STM32 Smart Device Controller (Blue Pill, FreeRTOS, Renode-Simulated)
 
-A bare-metal-style embedded firmware project for the STM32F103C8T6 ("Blue Pill"),
+An embedded firmware project for the STM32F103C8T6 ("Blue Pill"),
 built entirely without physical hardware and validated end-to-end using the
 [Renode](https://renode.io) hardware simulation framework.
 
