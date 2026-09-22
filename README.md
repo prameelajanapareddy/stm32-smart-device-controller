@@ -19,20 +19,20 @@ I don't currently own a physical Blue Pill board. Rather than wait on hardware, 
 - **MCU target:** STM32F103C8T6 (64KB flash / 20KB RAM, Cortex-M3 @ 8MHz)
 - **RTOS:** FreeRTOS (CMSIS_V2 interface), two tasks + two message queues
   - **SensorTask** — woken by a 1Hz TIM2 hardware interrupt; updates a simulated temperature reading, runs the AUTO-mode control logic (fan/heater GPIO outputs, critical-temp alarm LED), and pushes a status snapshot into `sensorQueue`
-  - - **UartTask** — blocks waiting for complete commands delivered through the UART receive path; parses line-based commands and responds over USART1; reads the most recent periodic sensor/actuator snapshot from `sensorQueue` to answer `STATUS`
+  - **UartTask** — blocks waiting for complete commands delivered through the UART receive path; parses line-based commands and responds over USART1; reads the most recent periodic sensor/actuator snapshot from `sensorQueue` to answer `STATUS`
 - **Peripherals used:** GPIO (output actuators + onboard LED), USART1 (interrupt-driven RX/TX), TIM2 (periodic interrupt)
 
 ## Command interface (115200 8N1 over USART1)
 
 | Command | Effect |
-|---|---|
-| STATUS | Reports current temperature, mode, and actuator states |
-| MODE AUTO | Switches to automatic threshold-based control |
-| MODE MANUAL | Switches to manual control (required before SET PAx) |
-| SET THRESHOLD n | Sets the fan-trigger temperature threshold |
-| SET PA0 ON/OFF | Manually drives the fan output (manual mode only) |
-| SET PA1 ON/OFF | Manually drives the heater output (manual mode only) |
-| SET PA2 ON/OFF | Manually drives the auxiliary alarm output (manual mode only) |
+|---------|--------|
+| `STATUS` | Reports current temperature, mode, and actuator states |
+| `MODE AUTO` | Switches to automatic threshold-based control |
+| `MODE MANUAL` | Switches to manual control (required before `SET PAx`) |
+| `SET THRESHOLD n` | Sets the fan-trigger temperature threshold |
+| `SET PA0 ON/OFF` | Manually drives the fan output (manual mode only) |
+| `SET PA1 ON/OFF` | Manually drives the heater output (manual mode only) |
+| `SET PA2 ON/OFF` | Manually drives the auxiliary alarm output (manual mode only) |
 
 ## Repository layout
 
