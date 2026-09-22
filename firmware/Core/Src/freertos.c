@@ -124,7 +124,8 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of sensorQueue */
-  sensorQueueHandle = osMessageQueueNew (4, 4, &sensorQueue_attributes);
+	/* creation of sensorQueue */
+	sensorQueueHandle = osMessageQueueNew (1, 4, &sensorQueue_attributes);
 
   /* creation of uartLineQueue */
   uartLineQueueHandle = osMessageQueueNew (4, 64, &uartLineQueue_attributes);
@@ -201,6 +202,10 @@ void StartSensorTask(void *argument)
                        | ((uint32_t)fanState     << 16)
                        | ((uint32_t)heaterState  << 24);
 
+      /* Overwrite semantics: discard any unread previous value so
+         sensorQueue always holds only the single most recent snapshot */
+      uint32_t discard;
+      osMessageQueueGet(sensorQueueHandle, &discard, NULL, 0);
       osMessageQueuePut(sensorQueueHandle, &status, 0, 0);
     }
   }
